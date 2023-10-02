@@ -45,6 +45,8 @@ int main(int argc, char *argv[]) {
             else if (fileType == 'd') strcpy(fileTypeStr, "directory");
             else if (fileType == 'p') strcpy(fileTypeStr, "FIFO/pipe");
             else if (fileType == 's') strcpy(fileTypeStr, "socket");
+            else if (fileType == 'c') strcpy(fileTypeStr, "character device");
+            else if (fileType == 'b') strcpy(fileTypeStr, "block device");
             else if (fileType == 'l') {
                 char linkname[100];
                 memset(linkname, 0, sizeof(char) * 100);
@@ -64,52 +66,53 @@ int main(int argc, char *argv[]) {
             else strcpy(fileTypeStr, "Unknown");
 
             printf("File: %s\n", argv[i]);
-            printf("  File type: \t\t\t%s\n", fileTypeStr);
+            printf("  File type:                %s\n", fileTypeStr);
 
             if (statbuf.st_mode & S_ISUID) uid = 1;
             if (statbuf.st_mode & S_ISGID) gid = 1;
             if (statbuf.st_mode & __S_ISVTX) sticky = 1;
 
             if (uid || gid || sticky) {
-                printf("  Special bits set:\t\t");
-                if (uid) printf("set-UID\t");
-                if (gid) printf("set-GID\t");
-                if (sticky) printf("sticky bits");
+                printf("  Special bits set:         ");
+                if (uid) printf("set-UID ");
+                if (gid) printf("set-GID ");
+                if (sticky) printf("sticky bits ");
                 printf("\n");
             }
             
-            printf("  Device ID number:\t\t%lxh/%ldd\n", statbuf.st_dev, statbuf.st_dev);
-            printf("  I-node number:\t\t%ld\n", statbuf.st_ino);
+            printf("  Device ID number:         %lxh/%ldd\n", statbuf.st_dev, statbuf.st_dev);
+            printf("  I-node number:            %ld\n", statbuf.st_ino);
             
             strmode(statbuf.st_mode, mode);
             chmod = statbuf.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
-            printf("  Mode:\t\t\t\t%c%s\t(%03o in octal)\n", fileType, mode, chmod);
+            if (gid) mode[5] = 'S';
+            printf("  Mode:                     %c%s        (%03o in octal)\n", fileType, mode, chmod);
             
-            printf("  Link count:\t\t\t%ld\n", statbuf.st_nlink);
+            printf("  Link count:               %ld\n", statbuf.st_nlink);
             
             pwd = getpwuid(statbuf.st_uid);
-            printf("  Owner Id:\t\t\t%s\t\t(UID = %d)\n", (pwd != NULL) ? pwd -> pw_name : "unknown",  statbuf.st_uid);
+            printf("  Owner Id:                 %s           (UID = %d)\n", (pwd != NULL) ? pwd -> pw_name : "unknown",  statbuf.st_uid);
             grp = getgrgid(statbuf.st_gid);
-            printf("  Group Id:\t\t\t%s\t\t(GID = %d)\n", (pwd != NULL) ? grp -> gr_name : "unknown",  statbuf.st_gid);
+            printf("  Group Id:                 %s              (GID = %d)\n", (pwd != NULL) ? grp -> gr_name : "unknown",  statbuf.st_gid);
 
-            printf("  Preferred I/O block size:\t%ld bytes\n", statbuf.st_blksize);
-            printf("  File size\t\t\t%ld bytes\n", statbuf.st_size);
-            printf("  Blocks allocated:\t\t%ld\n", statbuf.st_blocks);
+            printf("  Preferred I/O block size: %ld bytes\n", statbuf.st_blksize);
+            printf("  File size:                %ld bytes\n", statbuf.st_size);
+            printf("  Blocks allocated:         %ld\n", statbuf.st_blocks);
             
             time = statbuf.st_atime;
             timeStruct = localtime(&time);
             strftime(timeStr, 100, "%Y-%m-%d %H:%M:%S %z (%Z) %a", timeStruct);
-            printf("  Last file access:\t\t%s (local)\n", timeStr);
+            printf("  Last file access:         %s (local)\n", timeStr);
 
             time = statbuf.st_mtime;
             timeStruct = localtime(&time);
             strftime(timeStr, 100, "%Y-%m-%d %H:%M:%S %z (%Z) %a", timeStruct);
-            printf("  Last file modification:\t%s (local)\n", timeStr);
+            printf("  Last file modification:   %s (local)\n", timeStr);
 
             time = statbuf.st_ctime;
             timeStruct = localtime(&time);
             strftime(timeStr, 100, "%Y-%m-%d %H:%M:%S %z (%Z) %a", timeStruct);
-            printf("  Last status change:\t\t%s (local)\n", timeStr);
+            printf("  Last status change:       %s (local)\n", timeStr);
         }
     }
 
