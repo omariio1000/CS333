@@ -13,7 +13,7 @@
 #include <grp.h>
 #include <time.h>
 
-char FileType (mode_t mode);
+char getType(mode_t mode);
 void strmode(mode_t mode, char * buf);
 
 int main(int argc, char *argv[]) {
@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
             time_t time;
             struct tm *timeStruct;
             
-            fileType = FileType(statbuf.st_mode);
+            fileType = getType(statbuf.st_mode);
             if (fileType == '-') strcpy(fileTypeStr, "regular file");
             else if (fileType == 'd') strcpy(fileTypeStr, "directory");
             else if (fileType == 'p') strcpy(fileTypeStr, "FIFO/pipe");
@@ -127,7 +127,7 @@ void strmode(mode_t mode, char * buf) {
   buf[10] = '\0';
 }
 
-char FileType (mode_t mode) {
+char getType (mode_t mode) {
     switch (mode & __S_IFMT) {            //bitwise AND to determine file type
         case __S_IFSOCK:  return 's';     //socket
         case __S_IFLNK:   return 'l';     //symbolic link
