@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <pwd.h>
+#include <grp.h>
 #include <time.h>
 
 char FileType (mode_t mode);
@@ -34,6 +35,7 @@ int main(int argc, char *argv[]) {
             int gid = 0;
             int sticky = 0;
             struct passwd *pwd;
+            struct group *grp;
             char timeStr[100];
             time_t time;
             struct tm *timeStruct;
@@ -78,14 +80,18 @@ int main(int argc, char *argv[]) {
             
             printf("  Device ID number:\t\t%lxh/%ldd\n", statbuf.st_dev, statbuf.st_dev);
             printf("  I-node number:\t\t%ld\n", statbuf.st_ino);
+            
             strmode(statbuf.st_mode, mode);
             chmod = statbuf.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
             printf("  Mode:\t\t\t\t%c%s\t(%03o in octal)\n", fileType, mode, chmod);
+            
             printf("  Link count:\t\t\t%ld\n", statbuf.st_nlink);
+            
             pwd = getpwuid(statbuf.st_uid);
             printf("  Owner Id:\t\t\t%s\t\t(UID = %d)\n", (pwd != NULL) ? pwd -> pw_name : "unknown",  statbuf.st_uid);
-            pwd = getpwuid(statbuf.st_gid);
-            printf("  Group Id:\t\t\t%s\t\t(GID = %d)\n", (pwd != NULL) ? pwd -> pw_name : "unknown",  statbuf.st_gid);
+            grp = getgrgid(statbuf.st_gid);
+            printf("  Group Id:\t\t\t%s\t\t(GID = %d)\n", (pwd != NULL) ? grp -> gr_name : "unknown",  statbuf.st_gid);
+
             printf("  Preferred I/O block size:\t%ld bytes\n", statbuf.st_blksize);
             printf("  File size\t\t\t%ld bytes\n", statbuf.st_size);
             printf("  Blocks allocated:\t\t%ld\n", statbuf.st_blocks);
@@ -103,7 +109,7 @@ int main(int argc, char *argv[]) {
             time = statbuf.st_ctime;
             timeStruct = localtime(&time);
             strftime(timeStr, 100, "%Y-%m-%d %H:%M:%S %z (%Z) %a", timeStruct);
-            printf("  Last status change:\t%s (local)\n", timeStr);
+            printf("  Last status change:\t\t%s (local)\n", timeStr);
         }
     }
 
