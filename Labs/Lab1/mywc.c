@@ -96,5 +96,7 @@ int main(int argc, char *argv[]) {
     if (file != stdin) printf("%s", filename);
     printf("\n");
 
+    if (file != stdin) fclose(file);
+
     return EXIT_SUCCESS;
 }
