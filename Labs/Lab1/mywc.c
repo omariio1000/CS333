@@ -1,6 +1,7 @@
 /* Omar Nassar
  * October 1, 2023
  * Portland State University CS333
+ * Program to count chars, words, and lines of files
  */
 
 #include <stdio.h>
@@ -20,6 +21,10 @@ int main(int argc, char *argv[]) {
     int dispLine = 0;
     int dispWord = 0;
     int verbose = 0;
+
+    int charCount = 0;
+    int lineCount = 0;
+    int wordCount = 0;
 
 
     {
@@ -67,8 +72,29 @@ int main(int argc, char *argv[]) {
     }
 
     while(fgets(buf, BUFFER_SIZE, file) != NULL) {
+        int localCharCount = 0;
         
+        int i = 0;
+        while (buf[i] != '\0') {
+            localCharCount++;
+            if (buf[i] == ' ') wordCount++;
+            if (buf[i] == '\n') {
+                wordCount++;
+                lineCount++;
+            }
+            i++;
+        }
+        if (verbose) printf("DEBUG: line <<%s>> %d\n", buf, localCharCount);
+        charCount += localCharCount;
     }
+
+    if (!dispLine && !dispWord && !dispChar) dispLine = dispWord = dispChar = 1;
+
+    if (dispLine) printf("%d ", lineCount);
+    if (dispWord) printf("%d ", wordCount);
+    if (dispChar) printf("%d ", charCount);
+    if (file != stdin) printf("%s", filename);
+    printf("\n");
 
     return EXIT_SUCCESS;
 }
