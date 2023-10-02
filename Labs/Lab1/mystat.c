@@ -1,6 +1,7 @@
 /* Omar Nassar
  * October 1, 2023
  * Portland State University CS333
+ * Program to display a bunch of file information
  */
 
 #include <unistd.h>
