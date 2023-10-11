@@ -1,19 +1,20 @@
 # Omar Nassar
-# October 1, 2023
+# October 11, 2023
 # Portland State University CS201
-# Makefile for mystat and mywc programs
+# Makefile for viktar program
 
 CC = gcc
 DEBUG = -g
 DEFINES = 
 
 CFLAGS = ${DEBUG} ${DEFINES} -Wall -Wshadow -Wunreachable-code -Wredundant-decls \
-	-Wmissing-declarations -Wold-style-definition -Wmissing-prototypes \
-	-Wdeclaration-after-statement -Wextra -Werror -Wpedantic
+		-Wmissing-declarations -Wold-style-definition -Wmissing-prototypes \
+		-Wdeclaration-after-statement -Wextra -Werror -Wpedantic
 
 PROG1 = viktar
+INCLUDES = viktar.h
 
-PROGS = ${PROG1} PROG2}
+PROGS = ${PROG1} 
 
 # $@ is the name of the target
 # $^ is the names of all the prerequisites
@@ -24,7 +25,7 @@ all: ${PROGS}
 ${PROG1}: ${PROG1}.o
 	${CC} ${CFLAGS} -o $@ $^
 
-${PROG1}.o: ${PROG1}.c
+${PROG1}.o: ${PROG1}.c $(INCLUDES)
 	${CC} ${CFLAGS} -c $<
 
 clean cls:

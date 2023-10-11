@@ -1,6 +1,13 @@
-// rchaney@pdx.edu
+/* Jesse Chaney (rchaney@pdx.edu)
+ * October 10, 2023
+ * Portland State University CS333
+ * Program to create archives of files
+ */
 
 #pragma once
+
+#include <sys/stat.h>
+#include <time.h>
 
 #ifndef _VIKTAR_H
 # define _VIKTAR_H
