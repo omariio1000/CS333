@@ -22,7 +22,7 @@ void printHelp(void);
 int printContents(char*, int, int, int);
 void strmode(mode_t, char*);
 char getType (mode_t mode);
-int getFd(char*, int);
+int getFd(char*, int, int);
 int checkVik(char*, int);
 void parseFiles(int, char**, char***);
 void createVik(char**, int, char*, int);
@@ -194,11 +194,12 @@ char getType (mode_t mode) {
     }
 }
 
-int getFd(char* fileName, int file) {
+int getFd(char* fileName, int file, int output) {
     int fd = -1;
     
     if (file) {
-        fd = open(fileName, O_RDONLY);
+        if (output) fd = open(fileName, O_WRONLY | O_CREAT);
+        else fd = open(fileName, O_RDONLY);
         if (fd < 0) {
             fprintf(stderr, "failed to open input archive file\"%s\"\n", fileName);
             fprintf(stderr, "exiting...\n");
@@ -216,7 +217,7 @@ int checkVik(char *fileName, int file) {
     char temp[10] = {0};
     int ifd = -1; 
     
-    ifd = getFd(fileName, file);;
+    ifd = getFd(fileName, file, 0);;
 
     if (read(ifd, &temp, sizeof(temp)) > 0) {
         if (strcmp(temp, VIKTAR_FILE) == 0) return ifd;
@@ -233,7 +234,7 @@ int checkVik(char *fileName, int file) {
 }
 
 void createVik(char** files, int numFiles, char *fileName, int file) {
-    int ofd = getFd(fileName, file);
+    int ofd = getFd(fileName, file, 1);
     // for (int i = 0; i < numFiles; i++) if (!strcmp(files[i], fileName)) printf("yee\n");
     write(ofd, VIKTAR_FILE, sizeof(VIKTAR_FILE));
     for (int i = 0; i < numFiles; i++) {
@@ -259,7 +260,7 @@ void createVik(char** files, int numFiles, char *fileName, int file) {
 
         write(ofd, &viktar, sizeof(viktar));
 
-        ifd = getFd(files[i], 1);
+        ifd = getFd(files[i], 1, 0);
         read(ifd, &data, statbuf.st_size);
         write(ofd, data, statbuf.st_size);
 
