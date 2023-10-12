@@ -19,13 +19,14 @@
 #include "viktar.h"
 
 void printHelp(void);
-int printContents(char*, int);
+int printContents(char*, int, int, int);
 void strmode(mode_t, char*);
 char getType (mode_t mode);
+int checkVik(char*);
 
 int main(int argc, char *argv[]) {
     FILE *file = NULL;
-    char filename[FILENAME_MAX];
+    char filename[VIKTAR_MAX_FILE_NAME_LEN];
     int verbose = 0;
     int extractMode = 0;
     int createMode = 0;
@@ -80,7 +81,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    if (!(extractMode && createMode && shortTOC && longTOC)) {
+    if ((extractMode + createMode + shortTOC + longTOC) > 1) {
         fprintf(stderr, "too many options supplied\n");
         fprintf(stderr, "exiting without doing ANYTHING...\n");
         exit(EXIT_FAILURE);
@@ -89,8 +90,15 @@ int main(int argc, char *argv[]) {
     
 
     if (shortTOC || longTOC) {
-        if (file == NULL) fprintf(stderr, "archive from stdin\n");
-        int ret = printContents(stdin, longTOC);
+        int ifd = checkVik(filename);
+        int ret = 0;
+        int fileIn = 1;
+        if (file == NULL) {
+            fprintf(stderr, "archive from stdin\n");
+            fileIn = 0;
+        }
+        
+        ret = printContents(filename, longTOC, ifd, fileIn);
         if (ret == -1) fprintf(stderr, "some sorta error");
     }
 
@@ -111,44 +119,38 @@ void printHelp(void) {
     fprintf(stderr, "\t\t-h\t\tdisplay this AMAZING help message\n");
 }
 
-int printContents(char *fileName, int longTOC) {
+int printContents(char *fileName, int longTOC, int inIfd, int file) {
+    
     viktar_header_t viktar = {0};
-    int ifd = -1;
-    ifd = open(fileName, O_RDONLY);
-    if (ifd < 0) {
-        fprintf(stderr, "failed to open input archive file\"%s\"", fileName);
-        fprintf(stderr, "exiting...");
-        exit(EXIT_FAILURE);
-    }
-
-    if (fileName != stdin) fprintf(stderr, "reading archive file: \"%s\"", fileName);
+    int ifd = inIfd;
+    
+    if (file) fprintf(stderr, "reading archive file: \"%s\"\n", fileName);
     while(read(ifd, &viktar, sizeof(viktar_header_t)) > 0) {
-        printf("\tfile name: %s", viktar.viktar_name);
+        printf("\tfile name: %s\n", viktar.viktar_name);
         if (longTOC) {
             char mode[10];
             char fileType = getType(viktar.st_mode);
             struct passwd *pwd = getpwuid(viktar.st_uid);
             struct group *grp = getgrgid(viktar.st_gid); 
             char timeStr[100];
-            time_t time;
-            struct tm *timeStruct;
             strmode(viktar.st_mode, mode);
 
-            printf("\t\tmode:\t%s", (pwd != NULL) ? pwd -> pw_name : "unknown",  statbuf.st_uid);
-            printf("\t\tuser:\t%s", (grp != NULL) ? grp -> gr_name : "unknown",  statbuf.st_gid);
-            printf("\t\tsize:\t%ld", viktar.st_size);
+            printf("\t\tmode:\t%c%s\n", fileType, mode);
+            printf("\t\tuser:\t%s\n", (pwd != NULL) ? pwd->pw_name : "unknown");
+            printf("\t\tgroup:\t%s\n", (grp != NULL) ? grp -> gr_name : "unknown");
+            printf("\t\tsize:\t%ld\n", viktar.st_size);
             
-            time = viktar.st_mtim;
-            timeStruct = localtime(&time);
-            strftime(timeStr, 100, "%Y-%m-%d %H:%M:%S %z (%Z) %a", timeStruct);
-            printf("  Last file modification:   %s (local)\n", timeStr);
+            strftime(timeStr, 100, "%Y-%m-%d %H:%M:%S %Z", localtime(&viktar.st_mtim.tv_sec));
+            printf("\t\tmtime:\t%s\n", timeStr);
 
-            time = viktar.st_atim;
-            timeStruct = localtime(&time);
-            strftime(timeStr, 100, "%Y-%m-%d %H:%M:%S %z (%Z) %a", timeStruct);
-            printf("  Last file access:         %s (local)\n", timeStr);
+            strftime(timeStr, 100, "%Y-%m-%d %H:%M:%S %Z", localtime(&viktar.st_atim.tv_sec));
+            printf("\t\tatime:\t%s\n", timeStr);
+
+            lseek(ifd, viktar.st_size, SEEK_CUR);
         }
     }
+    close(ifd);
+    return 1;
 }
 
 void strmode(mode_t mode, char * buf) {
@@ -168,6 +170,30 @@ char getType (mode_t mode) {
         case __S_IFDIR:   return 'd';     //directory
         case __S_IFCHR:   return 'c';     //char device
         case __S_IFIFO:   return 'p';     //pipe
-        default: return '?';            //unknown
+        default:          return '?';     //unknown
     }
+}
+
+int checkVik(char *fileName) {
+    int ifd = -1;
+    char temp[10] = {0};
+
+    ifd = open(fileName, O_RDONLY);
+    if (ifd < 0) {
+        fprintf(stderr, "failed to open input archive file\"%s\"", fileName);
+        fprintf(stderr, "exiting...");
+        exit(EXIT_FAILURE);
+    }
+    if (read(ifd, &temp, sizeof(temp)) > 0) {
+        if (strcmp(temp, VIKTAR_FILE) == 0) return ifd;
+        else {
+            fprintf(stderr, "read: \"%s\"\n", temp);
+            fprintf(stderr, "not a viktar file \"%s\"\n", fileName);
+            fprintf(stderr, "\tthis is vik-terrible\n");
+            fprintf(stderr, "\texiting...\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    return ifd;
 }
