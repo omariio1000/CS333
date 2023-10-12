@@ -22,7 +22,7 @@ void printHelp(void);
 int printContents(char*, int, int, int);
 void strmode(mode_t, char*);
 char getType (mode_t mode);
-int getIfd(char*, int);
+int getFd(char*, int);
 int checkVik(char*, int);
 void parseFiles(int, char**, char***);
 void createVik(char**, int, char*, int);
@@ -206,29 +206,29 @@ char getType (mode_t mode) {
     }
 }
 
-int getIfd(char* fileName, int file) {
-    int ifd = -1;
+int getFd(char* fileName, int file) {
+    int fd = -1;
     
     if (file) {
-        ifd = open(fileName, O_RDONLY);
-        if (ifd < 0) {
+        fd = open(fileName, O_RDONLY);
+        if (fd < 0) {
             fprintf(stderr, "failed to open input archive file\"%s\"\n", fileName);
             fprintf(stderr, "exiting...\n");
             exit(EXIT_FAILURE);
         }
     }
     else {
-        ifd = dup(0);
+        fd = dup(0);
     }
 
-    return ifd;
+    return fd;
 }
 
 int checkVik(char *fileName, int file) {
     char temp[10] = {0};
     int ifd = -1; 
     
-    ifd = getIfd(fileName, file);;
+    ifd = getFd(fileName, file);;
 
     if (read(ifd, &temp, sizeof(temp)) > 0) {
         if (strcmp(temp, VIKTAR_FILE) == 0) return ifd;
@@ -245,10 +245,38 @@ int checkVik(char *fileName, int file) {
 }
 
 void createVik(char** files, int numFiles, char *fileName, int file) {
-    int ifd = getIfd(fileName, file);
-
-    ifd++;
+    int ofd = getFd(fileName, file);
+    // for (int i = 0; i < numFiles; i++) if (!strcmp(files[i], fileName)) printf("yee\n");
+    write(ofd, VIKTAR_FILE, sizeof(VIKTAR_FILE));
     for (int i = 0; i < numFiles; i++) {
-        printf("%s\n", files[i]);
+        viktar_header_t viktar = {0};
+        void* data;
+        int ifd = -1;
+        struct stat statbuf;
+        int ret = stat(files[i], &statbuf);
+        if (ret == -1) {
+            fprintf(stderr, "\tfailed to stat file\"%s\"\n", files[i]);
+            fprintf(stderr, "\texiting...\n");
+            exit(EXIT_FAILURE);
+        }
+
+        strcpy(viktar.viktar_name, files[i]);
+        viktar.st_mode = statbuf.st_mode;
+        viktar.st_uid = statbuf.st_uid;
+        viktar.st_gid = statbuf.st_gid;
+        viktar.st_size = statbuf.st_size;
+        viktar.st_atim.tv_sec = statbuf.st_atime;
+        viktar.st_mtim.tv_sec = statbuf.st_mtime;
+        viktar.st_ctim.tv_sec = statbuf.st_ctime;
+
+        write(ofd, &viktar, sizeof(viktar));
+
+        ifd = getFd(files[i], 1);
+        read(ifd, &data, statbuf.st_size);
+        write(ofd, &data, statbuf.st_size);
+
+        close(ifd);
     }
+    
+    close(ofd);
 }
