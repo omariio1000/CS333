@@ -28,13 +28,13 @@ void parseFiles(int, char**, char***);
 void createVik(char**, int, char*, int);
 
 int main(int argc, char *argv[]) {
-    FILE *file = NULL;
     char filename[VIKTAR_MAX_FILE_NAME_LEN];
     int verbose = 0;
     int extractMode = 0;
     int createMode = 0;
     int shortTOC = 0;
     int longTOC = 0;
+    int fileIn = 0;
 
     {
         int opt = 0;
@@ -50,12 +50,7 @@ int main(int argc, char *argv[]) {
                 break;
             case 'f':
                 strcpy(filename, optarg);
-                file = fopen(filename, "rw");
-                if (file == NULL) {
-                    fprintf(stderr, "Failed to open file %s\n", filename);
-                    fprintf(stderr, "file open failed: No such file or directory\n");
-                    exit(EXIT_FAILURE);
-                }
+                fileIn = 1;
                 break;
             case 'c':
                 createMode = 1;
@@ -93,11 +88,7 @@ int main(int argc, char *argv[]) {
     if (shortTOC || longTOC) {
         int ifd = 0;
         int ret = 0;
-        int fileIn = 1;
-        if (file == NULL) {
-            fprintf(stderr, "archive from stdin\n");
-            fileIn = 0;
-        }
+        if (!fileIn) fprintf(stderr, "archive from stdin\n");
 
         ifd = checkVik(filename, fileIn);
         
@@ -121,8 +112,6 @@ int main(int argc, char *argv[]) {
 
         //work here
         if (createMode) {
-            int fileIn = 1;
-            if (file == NULL) fileIn = 0;
             createVik(files, total, filename, fileIn);
         }
         else {//extract mode
@@ -133,7 +122,6 @@ int main(int argc, char *argv[]) {
         free(files);
     }
 
-    if (file != NULL) fclose(file);
     return EXIT_SUCCESS;
 }
 
@@ -273,7 +261,7 @@ void createVik(char** files, int numFiles, char *fileName, int file) {
 
         ifd = getFd(files[i], 1);
         read(ifd, &data, statbuf.st_size);
-        write(ofd, &data, statbuf.st_size);
+        write(ofd, data, statbuf.st_size);
 
         close(ifd);
     }
