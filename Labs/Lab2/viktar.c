@@ -22,7 +22,10 @@ void printHelp(void);
 int printContents(char*, int, int, int);
 void strmode(mode_t, char*);
 char getType (mode_t mode);
+int getIfd(char*, int);
 int checkVik(char*, int);
+void parseFiles(int, char**, char***);
+void createVik(char**, int, char*, int);
 
 int main(int argc, char *argv[]) {
     FILE *file = NULL;
@@ -32,8 +35,6 @@ int main(int argc, char *argv[]) {
     int createMode = 0;
     int shortTOC = 0;
     int longTOC = 0;
-
-    
 
     {
         int opt = 0;
@@ -102,6 +103,34 @@ int main(int argc, char *argv[]) {
         
         ret = printContents(filename, longTOC, ifd, fileIn);
         if (ret == -1) fprintf(stderr, "some sorta error");
+    }
+
+    if (createMode || extractMode) {
+        int total = argc - 2;
+        char **files;
+        int offset = 0;
+        if (verbose) total--;
+        offset = argc - total;
+
+        files = calloc(total, sizeof(char*));
+        for (int i = 0; i < total; i++) {
+            files[i] = calloc(VIKTAR_MAX_FILE_NAME_LEN, sizeof(char));
+            strcpy(files[i], argv[i + offset]);
+            // printf("%s\n", files[i]);
+        }
+
+        //work here
+        if (createMode) {
+            int fileIn = 1;
+            if (file == NULL) fileIn = 0;
+            createVik(files, total, filename, fileIn);
+        }
+        else {//extract mode
+
+        }
+
+        for (int i = 0; i < total; i++) free(files[i]);
+        free(files);
     }
 
     if (file != NULL) fclose(file);
@@ -177,9 +206,8 @@ char getType (mode_t mode) {
     }
 }
 
-int checkVik(char *fileName, int file) {
+int getIfd(char* fileName, int file) {
     int ifd = -1;
-    char temp[10] = {0};
     
     if (file) {
         ifd = open(fileName, O_RDONLY);
@@ -193,6 +221,15 @@ int checkVik(char *fileName, int file) {
         ifd = dup(0);
     }
 
+    return ifd;
+}
+
+int checkVik(char *fileName, int file) {
+    char temp[10] = {0};
+    int ifd = -1; 
+    
+    ifd = getIfd(fileName, file);;
+
     if (read(ifd, &temp, sizeof(temp)) > 0) {
         if (strcmp(temp, VIKTAR_FILE) == 0) return ifd;
         else {
@@ -205,4 +242,13 @@ int checkVik(char *fileName, int file) {
     }
 
     return -1;
+}
+
+void createVik(char** files, int numFiles, char *fileName, int file) {
+    int ifd = getIfd(fileName, file);
+
+    ifd++;
+    for (int i = 0; i < numFiles; i++) {
+        printf("%s\n", files[i]);
+    }
 }
