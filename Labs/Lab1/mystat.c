@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
             pwd = getpwuid(statbuf.st_uid);
             printf("  Owner Id:                 %s           (UID = %d)\n", (pwd != NULL) ? pwd -> pw_name : "unknown",  statbuf.st_uid);
             grp = getgrgid(statbuf.st_gid);
-            printf("  Group Id:                 %s              (GID = %d)\n", (pwd != NULL) ? grp -> gr_name : "unknown",  statbuf.st_gid);
+            printf("  Group Id:                 %s              (GID = %d)\n", (grp != NULL) ? grp -> gr_name : "unknown",  statbuf.st_gid);
 
             printf("  Preferred I/O block size: %ld bytes\n", statbuf.st_blksize);
             printf("  File size:                %ld bytes\n", statbuf.st_size);
