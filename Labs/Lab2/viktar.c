@@ -36,6 +36,8 @@ int main(int argc, char *argv[]) {
     int longTOC = 0;
     int fileIn = 0;
 
+    // for (int i = 0; i < argc; i++) printf("%s%s", argv[i], (i > argc - 1) ? ", " : "\n");
+
     {
         int opt = 0;
         while ((opt = getopt(argc, argv, OPTIONS)) != -1) {
@@ -101,13 +103,20 @@ int main(int argc, char *argv[]) {
         char **files;
         int offset = 0;
         if (verbose) total--;
+        
+
         offset = argc - total;
+        
+        if (fileIn) {
+            total -= 2;
+            offset += 2;
+        }
 
         files = calloc(total, sizeof(char*));
         for (int i = 0; i < total; i++) {
             files[i] = calloc(VIKTAR_MAX_FILE_NAME_LEN, sizeof(char));
             strcpy(files[i], argv[i + offset]);
-            // printf("%s\n", files[i]);
+            // printf("%d (%d): %s\n", i, i + offset, files[i]);
         }
 
         //work here
@@ -207,7 +216,8 @@ int getFd(char* fileName, int file, int output) {
         }
     }
     else {
-        fd = dup(0);
+        if (output) fd = dup(1);
+        else fd = dup(0);
     }
 
     return fd;
@@ -235,10 +245,12 @@ int checkVik(char *fileName, int file) {
 
 void createVik(char** files, int numFiles, char *fileName, int file) {
     int ofd = getFd(fileName, file, 1);
+    mode_t old_mode = 0;
+    old_mode = umask(0);
     // for (int i = 0; i < numFiles; i++) if (!strcmp(files[i], fileName)) printf("yee\n");
-    write(ofd, VIKTAR_FILE, sizeof(VIKTAR_FILE));
+    write(ofd, VIKTAR_FILE, sizeof(VIKTAR_FILE) - 1);
     for (int i = 0; i < numFiles; i++) {
-        viktar_header_t viktar = {0};
+        viktar_header_t viktar;
         void* data;
         int ifd = -1;
         // int bytesRead;
@@ -269,9 +281,10 @@ void createVik(char** files, int numFiles, char *fileName, int file) {
         // bytesRead = read(ifd, &data, statbuf.st_size);
         // bytesWrite = write(ofd, data, statbuf.st_size);
         // printf("\nBytes Read: %d\nBytes Write: %d\n", bytesRead, bytesWrite);
-
+        printf("%d\n", i);
         close(ifd);
     }
     
     close(ofd);
+    umask(old_mode);
 }
