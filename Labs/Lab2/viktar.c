@@ -15,8 +15,12 @@
 #include <pwd.h>
 #include <grp.h>
 #include <time.h>
+#include <errno.h>
 
 #include "viktar.h"
+
+#define MAX_FILE_NAME 100
+#define BUFFER_SIZE 1024
 
 void printHelp(void);
 int printContents(char*, int, int, int);
@@ -36,7 +40,7 @@ int main(int argc, char *argv[]) {
     int longTOC = 0;
     int fileIn = 0;
 
-    // for (int i = 0; i < argc; i++) printf("%s%s", argv[i], (i > argc - 1) ? ", " : "\n");
+    // for (int i = 0; i < argc; i++) printf("%s%s", argv[i], (i < argc - 1) ? ", " : "\n");
 
     {
         int opt = 0;
@@ -114,7 +118,7 @@ int main(int argc, char *argv[]) {
 
         files = calloc(total, sizeof(char*));
         for (int i = 0; i < total; i++) {
-            files[i] = calloc(VIKTAR_MAX_FILE_NAME_LEN, sizeof(char));
+            files[i] = calloc(MAX_FILE_NAME, sizeof(char));
             strcpy(files[i], argv[i + offset]);
             // printf("%d (%d): %s\n", i, i + offset, files[i]);
         }
@@ -175,8 +179,8 @@ int printContents(char *fileName, int longTOC, int inIfd, int file) {
             strftime(timeStr, 100, "%Y-%m-%d %H:%M:%S %Z", localtime(&viktar.st_atim.tv_sec));
             printf("\t\tatime:\t%s\n", timeStr);
 
-            lseek(ifd, viktar.st_size, SEEK_CUR);
         }
+        lseek(ifd, viktar.st_size, SEEK_CUR);
     }
     close(ifd);
     return 1;
@@ -247,23 +251,27 @@ void createVik(char** files, int numFiles, char *fileName, int file) {
     int ofd = getFd(fileName, file, 1);
     mode_t old_mode = 0;
     old_mode = umask(0);
-    // for (int i = 0; i < numFiles; i++) if (!strcmp(files[i], fileName)) printf("yee\n");
+    // for (int i = 0; i < numFiles; i++) printf("%d: %s\n", i, files[i]);
     write(ofd, VIKTAR_FILE, sizeof(VIKTAR_FILE) - 1);
     for (int i = 0; i < numFiles; i++) {
         viktar_header_t viktar;
-        void* data;
+        char data[BUFFER_SIZE];
         int ifd = -1;
-        // int bytesRead;
-        // int bytesWrite;
+        int bytesRead;
+        int bytesWrite;
+        int totalRead = 0;
+        int totalWrite = 0;
         struct stat statbuf;
         int ret = stat(files[i], &statbuf);
         if (ret == -1) {
-            fprintf(stderr, "\tfailed to stat file\"%s\"\n", files[i]);
-            fprintf(stderr, "\texiting...\n");
+            fprintf(stderr, "failed to stat file \"%s\"\n", files[i]);
+            fprintf(stderr, "exiting...\n");
             exit(EXIT_FAILURE);
         }
 
         strcpy(viktar.viktar_name, files[i]);
+        viktar.viktar_name[18] = '\0';
+
         viktar.st_mode = statbuf.st_mode;
         viktar.st_uid = statbuf.st_uid;
         viktar.st_gid = statbuf.st_gid;
@@ -275,13 +283,16 @@ void createVik(char** files, int numFiles, char *fileName, int file) {
         write(ofd, &viktar, sizeof(viktar_header_t));
 
         ifd = getFd(files[i], 1, 0);
-        read(ifd, &data, statbuf.st_size);
-        write(ofd, &data, statbuf.st_size);
-        
-        // bytesRead = read(ifd, &data, statbuf.st_size);
-        // bytesWrite = write(ofd, data, statbuf.st_size);
-        // printf("\nBytes Read: %d\nBytes Write: %d\n", bytesRead, bytesWrite);
-        printf("%d\n", i);
+
+        while ((bytesRead = read(ifd, data, sizeof(data))) > 0) {
+            if ((bytesWrite = write(ofd, data, bytesRead)) != bytesRead) {
+                perror("Error occurred while writing to file");
+            }
+            totalRead += bytesRead;
+            totalWrite += bytesWrite;
+        }
+        printf("\nBytes Read: %d\nBytes Write: %d\n", totalRead, totalWrite);
+
         close(ifd);
     }
     
