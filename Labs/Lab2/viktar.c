@@ -16,6 +16,7 @@
 #include <grp.h>
 #include <time.h>
 #include <errno.h>
+#include <utime.h>
 
 #include "viktar.h"
 
@@ -26,10 +27,11 @@ void printHelp(void);
 int printContents(char*, int, int, int);
 void strmode(mode_t, char*);
 char getType (mode_t mode);
-int getFd(char*, int, int);
+int getFd(char*, int, int, int);
 int checkVik(char*, int);
 void parseFiles(int, char**, char***);
 void createVik(char**, int, char*, int);
+void extractVik(char**, int, char*, int);
 
 int main(int argc, char *argv[]) {
     char filename[VIKTAR_MAX_FILE_NAME_LEN];
@@ -123,13 +125,8 @@ int main(int argc, char *argv[]) {
             // printf("%d (%d): %s\n", i, i + offset, files[i]);
         }
 
-        //work here
-        if (createMode) {
-            createVik(files, total, filename, fileIn);
-        }
-        else {//extract mode
-
-        }
+        if (createMode) createVik(files, total, filename, fileIn);
+        else extractVik(files, total, filename, fileIn);
 
         for (int i = 0; i < total; i++) free(files[i]);
         free(files);
@@ -207,11 +204,11 @@ char getType (mode_t mode) {
     }
 }
 
-int getFd(char* fileName, int file, int output) {
+int getFd(char* fileName, int file, int output, int chmod) {
     int fd = -1;
-    
+    if (chmod == -1) chmod = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
     if (file) {
-        if (output) fd = open(fileName, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+        if (output) fd = open(fileName, O_WRONLY | O_CREAT | O_TRUNC, chmod);
         else fd = open(fileName, O_RDONLY);
         if (fd < 0) {
             fprintf(stderr, "failed to open input archive file \"%s\"\n", fileName);
@@ -231,7 +228,7 @@ int checkVik(char *fileName, int file) {
     char temp[10] = {0};
     int ifd = -1; 
     
-    ifd = getFd(fileName, file, 0);;
+    ifd = getFd(fileName, file, 0, -1);;
 
     if (read(ifd, &temp, sizeof(temp)) > 0) {
         if (strcmp(temp, VIKTAR_FILE) == 0) return ifd;
@@ -248,7 +245,7 @@ int checkVik(char *fileName, int file) {
 }
 
 void createVik(char** files, int numFiles, char *fileName, int file) {
-    int ofd = getFd(fileName, file, 1);
+    int ofd = getFd(fileName, file, 1, -1);
     mode_t old_mode = 0;
     old_mode = umask(0);
     // for (int i = 0; i < numFiles; i++) printf("%d: %s\n", i, files[i]);
@@ -282,7 +279,7 @@ void createVik(char** files, int numFiles, char *fileName, int file) {
 
         write(ofd, &viktar, sizeof(viktar_header_t));
 
-        ifd = getFd(files[i], 1, 0);
+        ifd = getFd(files[i], 1, 0, -1);
 
         while ((bytesRead = read(ifd, data, sizeof(data))) > 0) {
             if ((bytesWrite = write(ofd, data, bytesRead)) != bytesRead) {
@@ -291,11 +288,15 @@ void createVik(char** files, int numFiles, char *fileName, int file) {
             totalRead += bytesRead;
             totalWrite += bytesWrite;
         }
-        printf("\nBytes Read: %d\nBytes Write: %d\n", totalRead, totalWrite);
+        // printf("\nBytes Read: %d\nBytes Write: %d\n", totalRead, totalWrite);
 
         close(ifd);
     }
     
     close(ofd);
     umask(old_mode);
+}
+
+void createVik(char** files, int numFiles, char *fileName, int file) {
+    
 }
