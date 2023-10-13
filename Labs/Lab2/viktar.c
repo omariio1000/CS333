@@ -198,10 +198,10 @@ int getFd(char* fileName, int file, int output) {
     int fd = -1;
     
     if (file) {
-        if (output) fd = open(fileName, O_WRONLY | O_CREAT);
+        if (output) fd = open(fileName, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
         else fd = open(fileName, O_RDONLY);
         if (fd < 0) {
-            fprintf(stderr, "failed to open input archive file\"%s\"\n", fileName);
+            fprintf(stderr, "failed to open input archive file \"%s\"\n", fileName);
             fprintf(stderr, "exiting...\n");
             exit(EXIT_FAILURE);
         }
@@ -241,6 +241,8 @@ void createVik(char** files, int numFiles, char *fileName, int file) {
         viktar_header_t viktar = {0};
         void* data;
         int ifd = -1;
+        // int bytesRead;
+        // int bytesWrite;
         struct stat statbuf;
         int ret = stat(files[i], &statbuf);
         if (ret == -1) {
@@ -256,13 +258,17 @@ void createVik(char** files, int numFiles, char *fileName, int file) {
         viktar.st_size = statbuf.st_size;
         viktar.st_atim.tv_sec = statbuf.st_atime;
         viktar.st_mtim.tv_sec = statbuf.st_mtime;
-        viktar.st_ctim.tv_sec = statbuf.st_ctime;
+        viktar.st_ctim.tv_sec = statbuf.st_ctime;  
 
-        write(ofd, &viktar, sizeof(viktar));
+        write(ofd, &viktar, sizeof(viktar_header_t));
 
         ifd = getFd(files[i], 1, 0);
         read(ifd, &data, statbuf.st_size);
-        write(ofd, data, statbuf.st_size);
+        write(ofd, &data, statbuf.st_size);
+        
+        // bytesRead = read(ifd, &data, statbuf.st_size);
+        // bytesWrite = write(ofd, data, statbuf.st_size);
+        // printf("\nBytes Read: %d\nBytes Write: %d\n", bytesRead, bytesWrite);
 
         close(ifd);
     }
