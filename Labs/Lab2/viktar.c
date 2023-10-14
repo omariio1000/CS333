@@ -31,7 +31,7 @@ int getFd(char*, int, int, int);
 int checkVik(char*, int);
 void parseFiles(int, char**, char***);
 void createVik(char**, int, char*, int);
-void extractVik(char**, int, char*, int);
+// void extractVik(char**, int, char*, int);
 
 int main(int argc, char *argv[]) {
     char filename[VIKTAR_MAX_FILE_NAME_LEN];
@@ -128,7 +128,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (createMode) createVik(files, total, filename, fileIn);
-        else extractVik(files, total, filename, fileIn);
+        // else extractVik(files, total, filename, fileIn);
 
         for (int i = 0; i < total; i++) free(files[i]);
         if (total) free(files);
@@ -254,13 +254,13 @@ void createVik(char** files, int numFiles, char *fileName, int file) {
     write(ofd, VIKTAR_FILE, sizeof(VIKTAR_FILE) - 1);
     for (int i = 0; i < numFiles; i++) {
         viktar_header_t viktar;
-        char data[BUFFER_SIZE];
         int ifd = -1;
         int bytesRead;
         int bytesWrite;
         int totalRead = 0;
         int totalWrite = 0;
         struct stat statbuf;
+        void *data = malloc(BUFFER_SIZE*sizeof(char));
         int ret = stat(files[i], &statbuf);
         if (ret == -1) {
             fprintf(stderr, "failed to stat file \"%s\"\n", files[i]);
@@ -283,7 +283,7 @@ void createVik(char** files, int numFiles, char *fileName, int file) {
 
         ifd = getFd(files[i], 1, 0, -1);
 
-        while ((bytesRead = read(ifd, data, sizeof(data))) > 0) {
+        while ((bytesRead = read(ifd, data, BUFFER_SIZE * sizeof(char))) > 0) {
             if ((bytesWrite = write(ofd, data, bytesRead)) != bytesRead) {
                 perror("Error occurred while writing to file");
             }
@@ -299,6 +299,6 @@ void createVik(char** files, int numFiles, char *fileName, int file) {
     umask(old_mode);
 }
 
-void extract(char** files, int numFiles, char *fileName, int file) {
+// void extractVik(char** files, int numFiles, char *fileName, int file) {
     
-}
+// }
