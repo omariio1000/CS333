@@ -328,7 +328,7 @@ void extractVik(char** files, int numFiles, char *fileName, int file) {
                 perror("utime");
                 return 1;
             }
-
+            
             times.actime = viktar.st_atim.tv_sec;
             times.modtime = viktar.st_mtim.tv_sec;
 
