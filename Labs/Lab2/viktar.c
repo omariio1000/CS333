@@ -118,18 +118,20 @@ int main(int argc, char *argv[]) {
             offset += 2;
         }
 
-        files = calloc(total, sizeof(char*));
-        for (int i = 0; i < total; i++) {
-            files[i] = calloc(MAX_FILE_NAME, sizeof(char));
-            strcpy(files[i], argv[i + offset]);
-            // printf("%d (%d): %s\n", i, i + offset, files[i]);
+        if (total) {
+            files = calloc(total, sizeof(char*));
+            for (int i = 0; i < total; i++) {
+                files[i] = calloc(MAX_FILE_NAME, sizeof(char));
+                strcpy(files[i], argv[i + offset]);
+                // printf("%d (%d): %s\n", i, i + offset, files[i]);
+            }
         }
 
         if (createMode) createVik(files, total, filename, fileIn);
         else extractVik(files, total, filename, fileIn);
 
         for (int i = 0; i < total; i++) free(files[i]);
-        free(files);
+        if (total) free(files);
     }
 
     return EXIT_SUCCESS;
@@ -297,6 +299,6 @@ void createVik(char** files, int numFiles, char *fileName, int file) {
     umask(old_mode);
 }
 
-void createVik(char** files, int numFiles, char *fileName, int file) {
+void extract(char** files, int numFiles, char *fileName, int file) {
     
 }
