@@ -324,18 +324,12 @@ void extractVik(char** files, int numFiles, char *fileName, int file) {
                 }
             }
 
-            if (utime(viktar.viktar_name, NULL) == -1) {
-                perror("utime");
-                return 1;
-            }
+            if (utime(viktar.viktar_name, NULL) == -1) perror("utime");
             
             times.actime = viktar.st_atim.tv_sec;
             times.modtime = viktar.st_mtim.tv_sec;
 
-            if (utime(viktar.viktar_name, &times) == -1) {
-                perror("utime");
-                return 1;
-            }
+            if (utime(viktar.viktar_name, &times) == -1) perror("utime");
 
             free(data);
             close(ofd);
