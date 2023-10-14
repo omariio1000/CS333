@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (createMode) createVik(files, total, filename, fileIn);
-        // else extractVik(files, total, filename, fileIn);
+        else extractVik(files, total, filename, fileIn);
 
         for (int i = 0; i < total; i++) free(files[i]);
         if (total) free(files);
@@ -304,6 +304,7 @@ void createVik(char** files, int numFiles, char *fileName, int file) {
 void extractVik(char** files, int numFiles, char *fileName, int file) {
     viktar_header_t viktar = {0};
     int ifd = checkVik(fileName, file);
+    int filesProcessed = 0;
 
     while(read(ifd, &viktar, sizeof(viktar_header_t)) > 0) {
         int proceed = 0;
@@ -315,14 +316,15 @@ void extractVik(char** files, int numFiles, char *fileName, int file) {
             int bytesRead;
             int bytesWrite;
             struct utimbuf times;
-            void *data = malloc(BUFFER_SIZE*sizeof(char));
+            void *data = malloc(viktar.st_size*sizeof(char));
             int ofd = getFd(viktar.viktar_name, 1, 1, viktar.st_mode);
             
-            while ((bytesRead = read(ifd, data, BUFFER_SIZE * sizeof(char))) > 0) {
-                if ((bytesWrite = write(ofd, data, bytesRead)) != bytesRead) {
-                    perror("Error occurred while writing to file");
-                }
+            bytesRead = read(ifd, data, viktar.st_size*sizeof(char));
+            if ((bytesWrite = write(ofd, data, bytesRead)) != bytesRead) {
+                perror("Error occurred while writing to file");
             }
+            printf("\nBytes Read: %d\nBytes Write: %d\n", bytesRead, bytesWrite);
+            
 
             if (utime(viktar.viktar_name, NULL) == -1) perror("utime");
             
@@ -333,9 +335,11 @@ void extractVik(char** files, int numFiles, char *fileName, int file) {
 
             free(data);
             close(ofd);
+            filesProcessed++;
         }
     }
     close(ifd);
+    printf("Files processed: %d\n", filesProcessed);
 }
 
 int checkFileName(char** files, int numFiles, char *name) {
