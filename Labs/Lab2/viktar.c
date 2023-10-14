@@ -31,7 +31,8 @@ int getFd(char*, int, int, int);
 int checkVik(char*, int);
 void parseFiles(int, char**, char***);
 void createVik(char**, int, char*, int);
-// void extractVik(char**, int, char*, int);
+void extractVik(char**, int, char*, int);
+int checkFileName(char**, int, char*);
 
 int main(int argc, char *argv[]) {
     char filename[VIKTAR_MAX_FILE_NAME_LEN];
@@ -292,6 +293,7 @@ void createVik(char** files, int numFiles, char *fileName, int file) {
         }
         // printf("\nBytes Read: %d\nBytes Write: %d\n", totalRead, totalWrite);
 
+        free(data);
         close(ifd);
     }
     
@@ -299,6 +301,52 @@ void createVik(char** files, int numFiles, char *fileName, int file) {
     umask(old_mode);
 }
 
-// void extractVik(char** files, int numFiles, char *fileName, int file) {
-    
-// }
+void extractVik(char** files, int numFiles, char *fileName, int file) {
+    viktar_header_t viktar = {0};
+    int ifd = checkVik(fileName, file);
+
+    while(read(ifd, &viktar, sizeof(viktar_header_t)) > 0) {
+        int proceed = 0;
+        if (numFiles) proceed = checkFileName(files, numFiles, viktar.viktar_name);
+        else proceed = 1;
+        
+        if (!proceed) lseek(ifd, viktar.st_size, SEEK_CUR);
+        else {
+            int bytesRead;
+            int bytesWrite;
+            struct utimbuf times;
+            void *data = malloc(BUFFER_SIZE*sizeof(char));
+            int ofd = getFd(viktar.viktar_name, 1, 1, viktar.st_mode);
+            
+            while ((bytesRead = read(ifd, data, BUFFER_SIZE * sizeof(char))) > 0) {
+                if ((bytesWrite = write(ofd, data, bytesRead)) != bytesRead) {
+                    perror("Error occurred while writing to file");
+                }
+            }
+
+            if (utime(viktar.viktar_name, NULL) == -1) {
+                perror("utime");
+                return 1;
+            }
+
+            times.actime = viktar.st_atim.tv_sec;
+            times.modtime = viktar.st_mtim.tv_sec;
+
+            if (utime(viktar.viktar_name, &times) == -1) {
+                perror("utime");
+                return 1;
+            }
+
+            free(data);
+            close(ofd);
+        }
+    }
+    close(ifd);
+}
+
+int checkFileName(char** files, int numFiles, char *name) {
+    for (int i = 0; i < numFiles; i++)
+        if (strcmp(name, files[i]) == 0) return 1;
+
+    return 0;
+}
