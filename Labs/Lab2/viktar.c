@@ -21,7 +21,6 @@
 #include "viktar.h"
 
 #define MAX_FILE_NAME 100
-#define BUFFER_SIZE 1024
 
 void printHelp(void);
 int printContents(char*, int, int, int);
@@ -34,9 +33,10 @@ void createVik(char**, int, char*, int);
 void extractVik(char**, int, char*, int);
 int checkFileName(char**, int, char*);
 
+int verbose = 0;
+
 int main(int argc, char *argv[]) {
     char filename[VIKTAR_MAX_FILE_NAME_LEN];
-    int verbose = 0;
     int extractMode = 0;
     int createMode = 0;
     int shortTOC = 0;
@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
             switch(opt) {
             case 'v':
                 verbose = 1;
-                fprintf(stderr, "verbose level: %d\n", verbose);
+                fprintf(stderr, "> verbose level: %d\n", verbose);
                 break;
             case 'h':
                 printHelp();
@@ -97,10 +97,12 @@ int main(int argc, char *argv[]) {
     if (shortTOC || longTOC) {
         int ifd = 0;
         int ret = 0;
+        if (verbose) fprintf(stderr, "> Printing %s table of contents.\n", shortTOC ? "short" : "long");
         if (!fileIn) fprintf(stderr, "archive from stdin\n");
 
         ifd = checkVik(filename, fileIn);
-        
+        if (verbose) fprintf(stderr, "> Input file descriptor: %d\n", ifd);
+
         ret = printContents(filename, longTOC, ifd, fileIn);
         if (ret == -1) fprintf(stderr, "some sorta error");
     }
@@ -110,6 +112,7 @@ int main(int argc, char *argv[]) {
         char **files;
         int offset = 0;
         if (verbose) total--;
+        if (verbose) fprintf(stderr, "> %s mode\n", createMode ? "Create": "Extract");
         
 
         offset = argc - total;
@@ -124,7 +127,7 @@ int main(int argc, char *argv[]) {
             for (int i = 0; i < total; i++) {
                 files[i] = calloc(MAX_FILE_NAME, sizeof(char));
                 strcpy(files[i], argv[i + offset]);
-                // printf("%d (%d): %s\n", i, i + offset, files[i]);
+                if (verbose) fprintf(stderr, "> Filename parsed: %d (%d): %s\n", i, i + offset, files[i]);
             }
         }
 
@@ -151,11 +154,11 @@ void printHelp(void) {
     fprintf(stderr, "\t\t-h\t\tdisplay this AMAZING help message\n");
 }
 
-int printContents(char *fileName, int longTOC, int inIfd, int file) {
+int printContents(char *fileName, int longTOC, int ifd, int file) {
     
     viktar_header_t viktar = {0};
-    int ifd = inIfd;
-    
+    int totalFiles = 0;
+   
     if (!file) strcpy(fileName, "stdin");
     fprintf(stderr, "Contents of viktar file: \"%s\"\n", fileName);
     while(read(ifd, &viktar, sizeof(viktar_header_t)) > 0) {
@@ -181,7 +184,10 @@ int printContents(char *fileName, int longTOC, int inIfd, int file) {
 
         }
         lseek(ifd, viktar.st_size, SEEK_CUR);
+        totalFiles++;
     }
+    if (verbose) fprintf(stderr, "> %d total files\n", totalFiles);
+
     close(ifd);
     return 1;
 }
@@ -209,6 +215,7 @@ char getType (mode_t mode) {
 
 int getFd(char* fileName, int file, int output, int chmod) {
     int fd = -1;
+    if (verbose) fprintf(stderr, "> Getting %s file descriptor\n", output ? "output" : "input");
     if (chmod == -1) chmod = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
     if (file) {
         if (output) fd = open(fileName, O_WRONLY | O_CREAT | O_TRUNC, chmod);
@@ -231,6 +238,8 @@ int checkVik(char *fileName, int file) {
     char temp[10] = {0};
     int ifd = -1; 
     
+    if (verbose) fprintf(stderr, "> Checking if \"%s\" is a viktar file\n", fileName);
+
     ifd = getFd(fileName, file, 0, -1);;
 
     if (read(ifd, &temp, sizeof(temp)) > 0) {
@@ -251,18 +260,18 @@ void createVik(char** files, int numFiles, char *fileName, int file) {
     int ofd = getFd(fileName, file, 1, -1);
     mode_t old_mode = 0;
     old_mode = umask(0);
-    // for (int i = 0; i < numFiles; i++) printf("%d: %s\n", i, files[i]);
     write(ofd, VIKTAR_FILE, sizeof(VIKTAR_FILE) - 1);
+
+    if (verbose) fprintf(stderr, "> Output file descriptor: %d\n", ofd);
+
     for (int i = 0; i < numFiles; i++) {
         viktar_header_t viktar;
         int ifd = -1;
         int bytesRead;
         int bytesWrite;
-        int totalRead = 0;
-        int totalWrite = 0;
         struct stat statbuf;
-        void *data = malloc(BUFFER_SIZE*sizeof(char));
         int ret = stat(files[i], &statbuf);
+        void *data = malloc(statbuf.st_size*sizeof(char));
         if (ret == -1) {
             fprintf(stderr, "failed to stat file \"%s\"\n", files[i]);
             fprintf(stderr, "exiting...\n");
@@ -283,19 +292,18 @@ void createVik(char** files, int numFiles, char *fileName, int file) {
         write(ofd, &viktar, sizeof(viktar_header_t));
 
         ifd = getFd(files[i], 1, 0, -1);
+        if (verbose) fprintf(stderr, "> Input file descriptor: %d\n", ifd);
 
-        while ((bytesRead = read(ifd, data, BUFFER_SIZE * sizeof(char))) > 0) {
-            if ((bytesWrite = write(ofd, data, bytesRead)) != bytesRead) {
-                perror("Error occurred while writing to file");
-            }
-            totalRead += bytesRead;
-            totalWrite += bytesWrite;
+        bytesRead = read(ifd, data, statbuf.st_size * sizeof(char));
+        if ((bytesWrite = write(ofd, data, bytesRead)) != bytesRead) {
+            perror("Error occurred while writing to file");
         }
-        // printf("\nBytes Read: %d\nBytes Write: %d\n", totalRead, totalWrite);
+        if (verbose) fprintf(stderr, "> Bytes Read: %d\n> Bytes Write: %d\n", bytesRead, bytesWrite);
 
         free(data);
         close(ifd);
     }
+    if (verbose) fprintf(stderr, "> Created viktar archive with %d files\n", numFiles);
     
     close(ofd);
     umask(old_mode);
@@ -306,10 +314,11 @@ void extractVik(char** files, int numFiles, char *fileName, int file) {
     int ifd = checkVik(fileName, file);
     int filesProcessed = 0;
 
+    if (verbose) fprintf(stderr, "> Input file descriptor: %d\n", ifd);
+
     while(read(ifd, &viktar, sizeof(viktar_header_t)) > 0) {
-        int proceed = 0;
+        int proceed = 1;
         if (numFiles) proceed = checkFileName(files, numFiles, viktar.viktar_name);
-        else proceed = 1;
         
         if (!proceed) lseek(ifd, viktar.st_size, SEEK_CUR);
         else {
@@ -318,12 +327,14 @@ void extractVik(char** files, int numFiles, char *fileName, int file) {
             struct utimbuf times;
             void *data = malloc(viktar.st_size*sizeof(char));
             int ofd = getFd(viktar.viktar_name, 1, 1, viktar.st_mode);
+
+            if (verbose) fprintf(stderr, "> Output file descriptor: %d\n", ofd);
             
             bytesRead = read(ifd, data, viktar.st_size*sizeof(char));
             if ((bytesWrite = write(ofd, data, bytesRead)) != bytesRead) {
                 perror("Error occurred while writing to file");
             }
-            printf("\nBytes Read: %d\nBytes Write: %d\n", bytesRead, bytesWrite);
+            if (verbose) fprintf(stderr, "> Bytes Read: %d\n> Bytes Write: %d\n", bytesRead, bytesWrite);
             
 
             if (utime(viktar.viktar_name, NULL) == -1) perror("utime");
@@ -339,12 +350,18 @@ void extractVik(char** files, int numFiles, char *fileName, int file) {
         }
     }
     close(ifd);
-    printf("Files processed: %d\n", filesProcessed);
+    if (verbose) fprintf(stderr, "Files processed: %d\n", filesProcessed);
 }
 
 int checkFileName(char** files, int numFiles, char *name) {
-    for (int i = 0; i < numFiles; i++)
-        if (strcmp(name, files[i]) == 0) return 1;
-
+    if (verbose) fprintf(stderr, "> Checking if \"%s\" exists in archive\n", name);
+    for (int i = 0; i < numFiles; i++) {
+        if (strcmp(name, files[i]) == 0) {
+            if (verbose) fprintf(stderr, "> \"%s\" found in viktar archive\n", name);
+            return 1;
+        }
+    }
+    
+    if (verbose) fprintf(stderr, "> \"%s\" not found in archive\n", name);
     return 0;
 }
