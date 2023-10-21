@@ -4,6 +4,9 @@
  * Program to create archives of files
  */
 
+
+#define _XOPEN_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -21,6 +24,7 @@
 #include "viktar.h"
 
 #define MAX_FILE_NAME 100
+
 
 void printHelp(void);
 int printContents(char*, int, int, int);
@@ -279,16 +283,23 @@ void createVik(char** files, int numFiles, char *fileName, int file) {
             exit(EXIT_FAILURE);
         }
 
+        memset(&viktar, 0, sizeof(viktar_header_t));
         strcpy(viktar.viktar_name, files[i]);
-        viktar.viktar_name[18] = '\0';
 
         viktar.st_mode = statbuf.st_mode;
         viktar.st_uid = statbuf.st_uid;
         viktar.st_gid = statbuf.st_gid;
         viktar.st_size = statbuf.st_size;
+
         viktar.st_atim.tv_sec = statbuf.st_atime;
+        viktar.st_atim.tv_nsec = statbuf.st_atimensec;
+
         viktar.st_mtim.tv_sec = statbuf.st_mtime;
+        viktar.st_mtim.tv_nsec = statbuf.st_mtimensec;
+
         viktar.st_ctim.tv_sec = statbuf.st_ctime;  
+        viktar.st_ctim.tv_nsec = statbuf.st_ctimensec;  
+
 
         write(ofd, &viktar, sizeof(viktar_header_t));
 
