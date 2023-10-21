@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
         int offset = 0;
         if (verbose) fprintf(stderr, "> %s mode\n", createMode ? "Create": "Extract");
         
-        for (int i = 0; i < total; i++) if (argv[i][0] == '-') total --;
+        for (int i = 0; i < argc; i++) if (argv[i][0] == '-') total --;
         if (fileIn) total--;
 
         offset = argc - total;
@@ -217,12 +217,13 @@ char getType (mode_t mode) {
     }
 }
 
-int getFd(char* fileName, int file, int output, int chmod) {
+int getFd(char* fileName, int file, int output, int chmodIn) {
     int fd = -1;
     if (verbose) fprintf(stderr, "> Getting %s file descriptor\n", output ? "output" : "input");
-    if (chmod == -1) chmod = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+    if (chmodIn == -1) chmodIn = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+    else if (verbose) fprintf(stderr, "> Passed in chmodIn value: %o\n", chmodIn);
     if (file) {
-        if (output) fd = open(fileName, O_WRONLY | O_CREAT | O_TRUNC, chmod);
+        if (output) fd = open(fileName, O_WRONLY | O_CREAT | O_TRUNC, chmodIn);
         else fd = open(fileName, O_RDONLY);
         if (fd < 0) {
             fprintf(stderr, "failed to open input archive file \"%s\"\n", fileName);
@@ -234,6 +235,8 @@ int getFd(char* fileName, int file, int output, int chmod) {
         if (output) fd = dup(1);
         else fd = dup(0);
     }
+    
+    if (output && file) chmod(fileName, chmodIn);
 
     return fd;
 }
@@ -335,10 +338,11 @@ void extractVik(char** files, int numFiles, char *fileName, int file) {
         else {
             int bytesRead;
             int bytesWrite;
+            int chmodIn = viktar.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
             // struct utimbuf times;
             struct timespec times[2];
             void *data = malloc(viktar.st_size*sizeof(char));
-            int ofd = getFd(viktar.viktar_name, 1, 1, viktar.st_mode);
+            int ofd = getFd(viktar.viktar_name, 1, 1, chmodIn);
 
             if (verbose) fprintf(stderr, "> Output file descriptor: %d\n", ofd);
             
@@ -371,14 +375,14 @@ void extractVik(char** files, int numFiles, char *fileName, int file) {
 }
 
 int checkFileName(char** files, int numFiles, char *name) {
-    if (verbose) fprintf(stderr, "> Checking if \"%s\" exists in archive\n", name);
+    if (verbose) fprintf(stderr, "> Checking if \"%s\" passed in\n", name);
     for (int i = 0; i < numFiles; i++) {
         if (strncmp(name, files[i], VIKTAR_MAX_FILE_NAME_LEN) == 0) {
-            if (verbose) fprintf(stderr, "> \"%s\" found in viktar archive\n", name);
+            if (verbose) fprintf(stderr, "> \"%s\" was passed in\n", name);
             return 1;
         }
     }
     
-    if (verbose) fprintf(stderr, "> \"%s\" not found in archive\n", name);
+    if (verbose) fprintf(stderr, "> \"%s\" not passed in\n", name);
     return 0;
 }
