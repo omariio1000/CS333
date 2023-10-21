@@ -9,7 +9,8 @@ DEFINES =
 
 CFLAGS = ${DEBUG} ${DEFINES} -Wall -Wshadow -Wunreachable-code -Wredundant-decls \
 		-Wmissing-declarations -Wold-style-definition -Wmissing-prototypes \
-		-Wdeclaration-after-statement -Wextra -Werror -Wpedantic
+		-Wdeclaration-after-statement -Wextra -Werror -Wpedantic -Wno-return-local-addr \
+		-Wunsafe-loop-optimizations -Wuninitialized
 
 PROG1 = viktar
 INCLUDES = viktar.h
