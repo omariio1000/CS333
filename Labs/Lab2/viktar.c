@@ -10,9 +10,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 #include <string.h>
 #include <getopt.h>
 #include <pwd.h>
@@ -25,6 +25,7 @@
 
 #define MAX_FILE_NAME 100
 
+extern int futimens (int __fd, const struct timespec __times[2]) __THROW;
 
 void printHelp(void);
 int printContents(char*, int, int, int);
@@ -334,7 +335,8 @@ void extractVik(char** files, int numFiles, char *fileName, int file) {
         else {
             int bytesRead;
             int bytesWrite;
-            struct utimbuf times;
+            // struct utimbuf times;
+            struct timespec times[2];
             void *data = malloc(viktar.st_size*sizeof(char));
             int ofd = getFd(viktar.viktar_name, 1, 1, viktar.st_mode);
 
@@ -347,12 +349,17 @@ void extractVik(char** files, int numFiles, char *fileName, int file) {
             if (verbose) fprintf(stderr, "> Bytes Read: %d\n> Bytes Write: %d\n", bytesRead, bytesWrite);
             
 
-            if (utime(viktar.viktar_name, NULL) == -1) perror("utime");
+            // if (utime(viktar.viktar_name, NULL) == -1) perror("utime");
             
-            times.actime = viktar.st_atim.tv_sec;
-            times.modtime = viktar.st_mtim.tv_sec;
+            // times.actime = viktar.st_atim.tv_sec;
+            // times.modtime = viktar.st_mtim.tv_sec;
 
-            if (utime(viktar.viktar_name, &times) == -1) perror("utime");
+            // if (utime(viktar.viktar_name, &times) == -1) perror("utime");
+
+            times[0] = viktar.st_atim;
+            times[1] = viktar.st_mtim;
+
+            if (futimens(ofd, times) == -1) perror("utime");
 
             free(data);
             close(ofd);
