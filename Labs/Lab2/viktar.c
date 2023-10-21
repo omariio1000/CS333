@@ -47,8 +47,6 @@ int main(int argc, char *argv[]) {
     int longTOC = 0;
     int fileIn = 0;
 
-    // for (int i = 0; i < argc; i++) printf("%s%s", argv[i], (i < argc - 1) ? ", " : "\n");
-
     {
         int opt = 0;
         while ((opt = getopt(argc, argv, OPTIONS)) != -1) {
@@ -84,6 +82,8 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    if (verbose) for (int i = 0; i < argc; i++) fprintf(stderr, "%s%s", argv[i], (i < argc - 1) ? ", " : "\n");
+
     if (!(extractMode || createMode || shortTOC || longTOC)) {
         fprintf(stderr, "no action supplied\n");
         fprintf(stderr, "exiting without doing ANYTHING...\n");
@@ -112,19 +112,17 @@ int main(int argc, char *argv[]) {
     }
 
     if (createMode || extractMode) {
-        int total = argc - 2;
+        int total = argc - 1;
         char **files;
         int offset = 0;
-        if (verbose) total--;
         if (verbose) fprintf(stderr, "> %s mode\n", createMode ? "Create": "Extract");
         
+        for (int i = 0; i < total; i++) if (argv[i][0] == '-') total --;
+        if (fileIn) total--;
 
         offset = argc - total;
-        
-        if (fileIn) {
-            total -= 2;
-            offset += 2;
-        }
+
+        if (verbose) fprintf(stderr, "> ARGC: %d, TOTAL: %d, OFFSET: %d\n", argc, total, offset);
 
         if (total) {
             files = calloc(total, sizeof(char*));
@@ -284,7 +282,7 @@ void createVik(char** files, int numFiles, char *fileName, int file) {
         }
 
         memset(&viktar, 0, sizeof(viktar_header_t));
-        strcpy(viktar.viktar_name, files[i]);
+        strncpy(viktar.viktar_name, files[i], VIKTAR_MAX_FILE_NAME_LEN);
 
         viktar.st_mode = statbuf.st_mode;
         viktar.st_uid = statbuf.st_uid;
@@ -368,7 +366,7 @@ void extractVik(char** files, int numFiles, char *fileName, int file) {
 int checkFileName(char** files, int numFiles, char *name) {
     if (verbose) fprintf(stderr, "> Checking if \"%s\" exists in archive\n", name);
     for (int i = 0; i < numFiles; i++) {
-        if (strcmp(name, files[i]) == 0) {
+        if (strncmp(name, files[i], VIKTAR_MAX_FILE_NAME_LEN) == 0) {
             if (verbose) fprintf(stderr, "> \"%s\" found in viktar archive\n", name);
             return 1;
         }
