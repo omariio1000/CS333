@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
 
 void printHelp(void) {
     fprintf(stderr, "help text\n");
-    fprintf(stderr, "\t./viktar\n");
+    fprintf(stderr, "\tOptions: %s\n", OPTIONS);
     fprintf(stderr, "\t\t-x\t\textract file/files from archive\n");;
     fprintf(stderr, "\t\t-c\t\tcreate an archive file\n");;
     fprintf(stderr, "\t\t-t\t\tdisplay a short table of contents of the archive file\n");;
@@ -160,7 +160,7 @@ int printContents(char *fileName, int longTOC, int ifd, int file) {
     int totalFiles = 0;
    
     if (!file) strcpy(fileName, "stdin");
-    fprintf(stderr, "Contents of viktar file: \"%s\"\n", fileName);
+    fprintf(stdout, "Contents of viktar file: \"%s\"\n", fileName);
     while(read(ifd, &viktar, sizeof(viktar_header_t)) > 0) {
         printf("\tfile name: %s\n", viktar.viktar_name);
         if (longTOC) {
@@ -170,17 +170,18 @@ int printContents(char *fileName, int longTOC, int ifd, int file) {
             struct group *grp = getgrgid(viktar.st_gid); 
             char timeStr[100];
             strmode(viktar.st_mode, mode);
+            if (viktar.st_mode & S_ISGID) mode[5] = 'S';
 
-            printf("\t\tmode:\t%c%s\n", fileType, mode);
-            printf("\t\tuser:\t%s\n", (pwd != NULL) ? pwd->pw_name : "unknown");
-            printf("\t\tgroup:\t%s\n", (grp != NULL) ? grp -> gr_name : "unknown");
-            printf("\t\tsize:\t%ld\n", viktar.st_size);
+            printf("\t\tmode:  %c%s\n", fileType, mode);
+            printf("\t\tuser:  %s\n", (pwd != NULL) ? pwd->pw_name : "unknown");
+            printf("\t\tgroup: %s\n", (grp != NULL) ? grp -> gr_name : "unknown");
+            printf("\t\tsize:  %ld\n", viktar.st_size);
             
             strftime(timeStr, 100, "%Y-%m-%d %H:%M:%S %Z", localtime(&viktar.st_mtim.tv_sec));
-            printf("\t\tmtime:\t%s\n", timeStr);
+            printf("\t\tmtime: %s\n", timeStr);
 
             strftime(timeStr, 100, "%Y-%m-%d %H:%M:%S %Z", localtime(&viktar.st_atim.tv_sec));
-            printf("\t\tatime:\t%s\n", timeStr);
+            printf("\t\tatime: %s\n", timeStr);
 
         }
         lseek(ifd, viktar.st_size, SEEK_CUR);
