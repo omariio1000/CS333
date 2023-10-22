@@ -174,6 +174,10 @@ int printContents(char *fileName, int longTOC, int ifd, int file) {
             char timeStr[100];
             strmode(viktar.st_mode, mode);
             if (viktar.st_mode & S_ISGID) mode[5] = 'S';
+            if (viktar.st_mode & S_ISUID && mode[2] == 'x') mode[2] = 's';
+            if (viktar.st_mode & S_ISUID && mode[5] == 'x') mode[5] = 's';
+            if (viktar.st_mode & S_ISUID && mode[8] == 'x') mode[8] = 's';
+            if (viktar.st_mode & __S_ISVTX) mode[8] = 't';
 
             printf("\t\tmode:  %c%s\n", fileType, mode);
             printf("\t\tuser:  %s\n", (pwd != NULL) ? pwd->pw_name : "unknown");
@@ -235,8 +239,6 @@ int getFd(char* fileName, int file, int output, int chmodIn) {
         if (output) fd = dup(1);
         else fd = dup(0);
     }
-    
-    if (output && file) chmod(fileName, chmodIn);
 
     return fd;
 }
@@ -338,12 +340,15 @@ void extractVik(char** files, int numFiles, char *fileName, int file) {
         else {
             int bytesRead;
             int bytesWrite;
-            int chmodIn = viktar.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
             // struct utimbuf times;
             struct timespec times[2];
             void *data = malloc(viktar.st_size*sizeof(char));
-            int ofd = getFd(viktar.viktar_name, 1, 1, chmodIn);
-
+            int SPECIAL = S_ISUID | S_ISGID | S_ISVTX;
+            mode_t chmodIn = viktar.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO | SPECIAL);
+            int ofd = 0;
+            struct stat statbuf;            
+            
+            ofd =  getFd(viktar.viktar_name, 1, 1, chmodIn);
             if (verbose) fprintf(stderr, "> Output file descriptor: %d\n", ofd);
             
             bytesRead = read(ifd, data, viktar.st_size*sizeof(char));
@@ -352,6 +357,10 @@ void extractVik(char** files, int numFiles, char *fileName, int file) {
             }
             if (verbose) fprintf(stderr, "> Bytes Read: %d\n> Bytes Write: %d\n", bytesRead, bytesWrite);
             
+            chmod(viktar.viktar_name, chmodIn);
+            stat(viktar.viktar_name, &statbuf);
+            if (verbose) fprintf(stderr, "> %s OG MODE: %o PASSED MODE: %o ACTUAL: %o\n", viktar.viktar_name, viktar.st_mode, chmodIn, statbuf.st_mode);
+
 
             // if (utime(viktar.viktar_name, NULL) == -1) perror("utime");
             
