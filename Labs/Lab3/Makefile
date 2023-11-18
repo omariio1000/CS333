@@ -24,7 +24,7 @@ PROGS = ${PROG1}
 all: ${PROGS}
 
 ${PROG1}: ${PROG1}.o
-	${CC} ${CFLAGS} -o $@ $^
+	${CC} ${CFLAGS} -o $@ $^ -pthread -lcrypt
 
 ${PROG1}.o: ${PROG1}.c $(INCLUDES)
 	${CC} ${CFLAGS} -c $<
