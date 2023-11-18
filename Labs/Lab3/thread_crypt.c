@@ -205,7 +205,7 @@ void *encrypt(void *arg) {
             out = crypt_rn(buf, salt, (void*) &data, sizeof(data));
         }
 
-        printf("%s:%s\n", buf, out);
+        fprintf(output, "%s:%s\n", buf, out);
     }
 
     free(salt);
