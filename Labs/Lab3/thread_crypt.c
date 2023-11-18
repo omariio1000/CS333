@@ -14,10 +14,11 @@
 #include "thread_crypt.h"
 
 #define MAX_FILE_NAME_LEN 20
-#define UNUSED(x) (void)(x)
+#define MAX_FILE_LINE_LEN 128
 
 void printHelp(char*);
 void *encrypt(void *);
+void readFile(void);
 
 static FILE *input;
 static FILE *output;
@@ -29,6 +30,10 @@ static int rounds = -1;
 static char *roundsStr;
 static int threadCount = 1;
 static char saltChars [] = {SALT_CHARS};
+static char **fileData;
+static struct crypt_data *data;
+static long lineCount;
+static int *indexes;
 
 int main(int argc, char *argv[]) {
 
@@ -167,9 +172,18 @@ pthread_t *threads = NULL;
     }
 
     salt = malloc(threadCount * sizeof(char*));
+    for (int i = 0; i < threadCount; i++) salt[i] = malloc(CRYPT_MAX_PASSPHRASE_SIZE * sizeof(char));
+
+    readFile();
+
+    data = calloc(lineCount, sizeof(struct crypt_data));
     threads = malloc(threadCount * sizeof(pthread_t));
-    for (long i = 0; i < threadCount; i++)
-        pthread_create(&threads[i], NULL, encrypt, NULL);
+    indexes = malloc(threadCount * sizeof(int));
+
+    for (long i = 0; i < threadCount; i++) {
+        indexes[i] = i;
+        pthread_create(&threads[i], NULL, encrypt, (void *) i);
+    }
 
     for (long i = 0; i < threadCount; i++)
         pthread_join(threads[i], NULL);
@@ -180,6 +194,12 @@ pthread_t *threads = NULL;
     free(saltStr);
     free(roundsStr);
     free(threads);
+    for (int i = 0; i < threadCount; i++) free(salt[i]);
+    free(salt);
+    free(indexes);
+    free(data);
+    for (int i = 0; i < lineCount; i++) free(fileData[i]);
+    free(fileData);
 
     return EXIT_SUCCESS;
 }
@@ -199,35 +219,42 @@ void printHelp(char *progName) {
 }
 
 void *encrypt(void *arg) {
-    char buf[CRYPT_MAX_PASSPHRASE_SIZE];
-    // char *salt = malloc(CRYPT_MAX_PASSPHRASE_SIZE * sizeof(char));
     char *out;
+    long idx = (long) arg;
 
-    while(fgets(buf, CRYPT_MAX_PASSPHRASE_SIZE, input) != NULL) {
-        struct crypt_data data;
-
-        buf[strcspn(buf, "\n")] = 0;
+    for (long thr = idx; thr < lineCount; thr += threadCount) {
         for (int i = 0; i < saltLen; i++) {
             int randInt = rand() % strlen(saltChars);
             saltStr[i] = saltChars[randInt];
         }
-        if (algo != 0) sprintf(salt, "$%d$%s%s$", algo, (roundsStr ? roundsStr : ""), saltStr);
-        else sprintf(salt, "%s", saltStr);
+        if (algo != 0) sprintf(salt[idx], "$%d$%s%s$", algo, (roundsStr ? roundsStr : ""), saltStr);
+        else sprintf(salt[idx], "%s", saltStr);
         
-        memset(&data, 0, sizeof(data));
-        data.initialized = 0;
-        strcpy(data.input, buf);
-        strcpy(data.setting, salt);
+        data[thr].initialized = 0;
 
-        for (int i = 0; i < rounds; i++) {
-            out = crypt_rn(buf, salt, (void*) &data, sizeof(data));
-        }
+        for (int i = 0; i < rounds; i++)
+            out = crypt_rn(fileData[thr], salt[idx], (void*) &data[thr], sizeof(data[thr]));
 
-        fprintf(output, "%s:%s\n", buf, out);
+        fprintf(output, "%s:%s\n", fileData[thr], out);
     }
 
-    // free(salt);
-
     pthread_exit(EXIT_SUCCESS);
-    // UNUSED(arg);
+}
+
+void readFile(void) {
+    char c;
+    while ((c = fgetc(input)) != EOF) {
+        if (c == '\n')
+            lineCount++;
+    }
+    
+    fseek(input, 0, SEEK_SET);
+    fileData = malloc(lineCount * sizeof(char*));
+    for (int i = 0; i < lineCount; i++) {
+        fileData[i] = malloc(MAX_FILE_LINE_LEN * sizeof(char));
+        fgets(fileData[i], MAX_FILE_LINE_LEN, input);
+        // fgets(data[i].input, CRYPT_MAX_PASSPHRASE_SIZE, input);
+        fileData[i][strlen(fileData[i]) - 1] = '\0';
+        // data[i].input[strlen(data[i].input) - 1] = '\0';
+    }
 }
