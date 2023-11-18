@@ -15,6 +15,11 @@
 #define MAX_FILE_NAME_LEN 20
 
 void printHelp(char*);
+void *encrypt(void *);
+
+static FILE *input;
+static FILE *output;
+static int threadCount = 1;
 
 int main(int argc, char *argv[]) {
 
@@ -23,13 +28,11 @@ char fileOutName[MAX_FILE_NAME_LEN] = {0};
 int fileIn = 0;
 int fileOut = 0;
 int verbose = 0;
-int algo = -1;
+int algo = 0;
 int salt = -1;
 int rounds = 5000;
 int randSeed = -1;
-int threadCount = 1;
-FILE *input;
-FILE *output;
+pthread_t *threads = NULL;
 
     {
         int opt = 0;
@@ -96,29 +99,37 @@ FILE *output;
     fprintf(output, "lol\n");
 
     if (rounds < 1000) rounds = 1000;
-    if (rounds > 999999999) rounds = 999999999;
+    else if (rounds > 999999999) rounds = 999999999;
 
     //checking salt stuff
-    if (algo == 0) {//DES
-        if (salt < 0 || salt > 2) 
-            salt = 2; 
-    }
-    else if (algo == 1) {//MD5
+    switch(algo) {
+    case 0: //DES
+        salt = 2;
+        break;
+    case 1: //MD5
         if (salt < 1 || salt > 8) 
             salt = 8;
-    }
-    else if (algo == 5) {//SHA256
+        break;
+    case 5: //SHA256
         if (salt < 5 || salt > 16) 
             salt = 16;
-    }
-    else if (algo == 6) {//SHA512
+        break;
+    
+    case 6: //SHA512
         if (salt < 6 || salt > 16) 
             salt = 16;
-    }
-    else {
+        break;
+    default:
         fprintf(stderr, "i done goofed. my bad.\n");
         exit(EXIT_FAILURE);
     }
+
+    threads = malloc(threadCount * sizeof(pthread_t));
+    for (long i = 0; i < threadCount; i++)
+        pthread_create(&threads[i], NULL, encrypt, (void *) i);
+
+    for (long i = 0; i < threadCount; i++)
+        pthread_join(threads[i], NULL);
 
     return EXIT_SUCCESS;
 }
@@ -135,4 +146,9 @@ void printHelp(char *progName) {
     fprintf(stderr, "\t-t #\t\tnumber of threads to create (default 1)\n");
     fprintf(stderr, "\t-v\t\tenable verbose mode\n");
     fprintf(stderr, "\t-h\t\thelpful text\n");
+}
+
+void *encrypt(void *id) {
+    
+    pthread_exit(EXIT_SUCCESS);
 }
