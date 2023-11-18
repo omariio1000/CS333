@@ -23,6 +23,7 @@ static FILE *input;
 static FILE *output;
 static int algo = 0;
 static char *saltStr;
+static char **salt;
 static int saltLen = -1;
 static int rounds = -1;
 static char *roundsStr;
@@ -165,6 +166,7 @@ pthread_t *threads = NULL;
         fprintf(stderr, "> Output file: %s\n\n", fileOut ? fileOutName : "stdout");
     }
 
+    salt = malloc(threadCount * sizeof(char*));
     threads = malloc(threadCount * sizeof(pthread_t));
     for (long i = 0; i < threadCount; i++)
         pthread_create(&threads[i], NULL, encrypt, NULL);
@@ -198,7 +200,7 @@ void printHelp(char *progName) {
 
 void *encrypt(void *arg) {
     char buf[CRYPT_MAX_PASSPHRASE_SIZE];
-    char *salt = malloc(CRYPT_MAX_PASSPHRASE_SIZE * sizeof(char));
+    // char *salt = malloc(CRYPT_MAX_PASSPHRASE_SIZE * sizeof(char));
     char *out;
 
     while(fgets(buf, CRYPT_MAX_PASSPHRASE_SIZE, input) != NULL) {
@@ -224,8 +226,8 @@ void *encrypt(void *arg) {
         fprintf(output, "%s:%s\n", buf, out);
     }
 
-    free(salt);
+    // free(salt);
 
     pthread_exit(EXIT_SUCCESS);
-    UNUSED(arg);
+    // UNUSED(arg);
 }
