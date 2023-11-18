@@ -28,7 +28,6 @@ static int rounds = -1;
 static char *roundsStr;
 static int threadCount = 1;
 static char saltChars [] = {SALT_CHARS};
-pthread_mutex_t mutex;
 
 int main(int argc, char *argv[]) {
 
@@ -134,16 +133,15 @@ pthread_t *threads = NULL;
         exit(EXIT_FAILURE);
     }
 
-    roundsStr = calloc(17, sizeof(char));
+    roundsStr = malloc(17 * sizeof(char));
     if (algo == 5 || algo == 6) {
         sprintf(roundsStr, "rounds=%d$", rounds);
     }
 
-    saltStr = calloc(saltLen + 1, sizeof(char));
+    saltStr = malloc((saltLen + 1) * sizeof(char));
     saltStr[saltLen] = '\0';
 
     threads = malloc(threadCount * sizeof(pthread_t));
-    pthread_mutex_init(&mutex, NULL);
     for (long i = 0; i < threadCount; i++)
         pthread_create(&threads[i], NULL, encrypt, NULL);
 
@@ -153,10 +151,9 @@ pthread_t *threads = NULL;
 
     if (input) fclose(input);
     if (output) fclose(output);
-    if (saltStr) free(saltStr);
-    if (roundsStr) free(roundsStr);
-    if (threads) free(threads);
-    pthread_mutex_destroy(&mutex);
+    free(saltStr);
+    free(roundsStr);
+    free(threads);
 
     return EXIT_SUCCESS;
 }
@@ -182,11 +179,6 @@ void *encrypt(void *arg) {
 
     while(fgets(buf, CRYPT_MAX_PASSPHRASE_SIZE, input) != NULL) {
         struct crypt_data data;
-        
-        // pthread_mutex_lock(&mutex);
-        // if (fgets(buf, CRYPT_MAX_PASSPHRASE_SIZE, input) == NULL)
-        //     break;
-        // pthread_mutex_unlock(&mutex);
 
         buf[strcspn(buf, "\n")] = 0;
         for (int i = 0; i < saltLen; i++) {
