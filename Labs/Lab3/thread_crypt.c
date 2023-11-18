@@ -141,6 +141,30 @@ pthread_t *threads = NULL;
     saltStr = malloc((saltLen + 1) * sizeof(char));
     saltStr[saltLen] = '\0';
 
+    if (verbose) {
+        fprintf(stderr, "> Algorithm: %d ", algo);
+        switch (algo){
+        case 0:
+            fprintf(stderr, "(DES)\n");
+            break;
+        case 1:
+            fprintf(stderr, "(MD5)\n");
+            break;
+        case 5:
+            fprintf(stderr, "(SHA-256)\n");
+            break;
+        case 6:
+            fprintf(stderr, "(SHA-512)\n");
+            break;
+        }
+        fprintf(stderr, "> Salt length: %d\n", saltLen);
+        if (algo == 5 || algo == 6) fprintf(stderr, "> Rounds: %d\n", rounds);
+        fprintf(stderr, "> Rand seed: %u\n", randSeed);
+        fprintf(stderr, "> Thread count: %d\n", threadCount);
+        fprintf(stderr, "> Input file: %s\n", fileInName);
+        fprintf(stderr, "> Output file: %s\n\n", fileOut ? fileOutName : "stdout");
+    }
+
     threads = malloc(threadCount * sizeof(pthread_t));
     for (long i = 0; i < threadCount; i++)
         pthread_create(&threads[i], NULL, encrypt, NULL);
