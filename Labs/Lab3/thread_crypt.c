@@ -10,6 +10,7 @@
 #include <getopt.h>
 #include <pthread.h>
 #include <crypt.h>
+#include <unistd.h>
 
 #include "thread_crypt.h"
 
@@ -37,13 +38,14 @@ static int *indexes;
 
 int main(int argc, char *argv[]) {
 
-char fileInName[MAX_FILE_NAME_LEN];
-char fileOutName[MAX_FILE_NAME_LEN] = {0};
-int fileIn = 0;
-int fileOut = 0;
-int verbose = 0;
-unsigned int randSeed = 1; //default if nothing entered is srand(1)
-pthread_t *threads = NULL;
+    char fileInName[MAX_FILE_NAME_LEN];
+    char fileOutName[MAX_FILE_NAME_LEN] = {0};
+    int fileIn = 0;
+    int fileOut = 0;
+    int verbose = 0;
+    unsigned int randSeed = 1; //default if nothing entered is srand(1)
+    pthread_t *threads = NULL;
+    long numCpus = sysconf(_SC_NPROCESSORS_ONLN);
 
     {
         int opt = 0;
@@ -75,7 +77,7 @@ pthread_t *threads = NULL;
                 break;
             case 't':
                 sscanf(optarg, "%d", &threadCount);
-                if (threadCount > 20 || threadCount < 1) {
+                if (threadCount > numCpus || threadCount < 1) {
                     fprintf(stderr, "invalid thread count %d\n", threadCount);
                     exit(EXIT_FAILURE);
                 }
@@ -166,7 +168,7 @@ pthread_t *threads = NULL;
         fprintf(stderr, "> Salt length: %d\n", saltLen);
         if (algo == 5 || algo == 6) fprintf(stderr, "> Rounds: %d\n", rounds);
         fprintf(stderr, "> Rand seed: %u\n", randSeed);
-        fprintf(stderr, "> Thread count: %d\n", threadCount);
+        fprintf(stderr, "> Thread count: %d (%ld threads on system)\n", threadCount, numCpus);
         fprintf(stderr, "> Input file: %s\n", fileInName);
         fprintf(stderr, "> Output file: %s\n\n", fileOut ? fileOutName : "stdout");
     }
