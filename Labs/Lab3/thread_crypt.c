@@ -232,8 +232,7 @@ void *encrypt(void *arg) {
         
         data[thr].initialized = 0;
 
-        for (int i = 0; i < rounds; i++)
-            out = crypt_rn(fileData[thr], salt[idx], (void*) &data[thr], sizeof(data[thr]));
+        out = crypt_rn(fileData[thr], salt[idx], (void*) &data[thr], sizeof(data[thr]));
 
         fprintf(output, "%s:%s\n", fileData[thr], out);
     }
